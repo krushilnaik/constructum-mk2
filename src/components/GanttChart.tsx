@@ -193,7 +193,7 @@ export function GanttChart() {
           }
         }}
       >
-        <svg ref={svgRef} width={Math.max(1000, timelineWidth + leftColumnWidth + 100)} height={chartHeight}>
+        <svg ref={svgRef} width={timelineWidth + leftColumnWidth} height={chartHeight}>
         {/* Background */}
         <rect x={0} y={0} width="100%" height="100%" fill="#ffffff" />
 
@@ -248,6 +248,25 @@ export function GanttChart() {
               <line x1={0} x2={timelineWidth} y1={rowHeight} y2={rowHeight} stroke="#f0f0f0" />
             </g>
           ))}
+          
+          {/* Vertical grid lines for each day */}
+          {Array.from({ length: totalDays }).map((_, i) => {
+            const dayISO = addDays(minDate, i);
+            const x = i * ppd;
+            const isToday = dayISO === todayISO;
+            return (
+              <line
+                key={`grid-${i}`}
+                x1={x}
+                x2={x}
+                y1={0}
+                y2={rows * rowHeight}
+                stroke={isToday ? "#ff4d4f" : "#f0f0f0"}
+                strokeWidth={isToday ? 2 : 1}
+                opacity={isToday ? 0.8 : 0.3}
+              />
+            );
+          })}
         </g>
 
         {/* Dependencies (under bars) */}

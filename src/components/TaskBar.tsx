@@ -213,7 +213,7 @@ export function TaskBar(props: Props) {
       {/* normal bar */}
       <g
         transform={`translate(${x}, ${y})`}
-        className={`transition-all duration-200 ease-out hover:drop-shadow-lg ${
+        className={`transition-all duration-300 ease-out hover:drop-shadow-lg animate-in fade-in-0 ${
           isDraggingReorder ? "opacity-30" : ""
         }`}
       >
@@ -223,10 +223,11 @@ export function TaskBar(props: Props) {
           width={w}
           height={barHeight}
           rx={4}
-          fill="#60a5fa"
-          stroke="#2563eb"
+          fill={selected ? "rgba(75, 85, 99, 0.8)" : "rgba(107, 114, 128, 0.6)"}
+          stroke={selected ? "rgba(55, 65, 81, 0.9)" : "rgba(75, 85, 99, 0.7)"}
           onPointerDown={(ev) => startDrag(ev, "move")}
           style={{ cursor: "grab" }}
+          className="hover:drop-shadow-md transition-all duration-200"
         />
 
         {/* progress */}
@@ -236,7 +237,7 @@ export function TaskBar(props: Props) {
           width={(w * (task.progress ?? 0)) / 100}
           height={barHeight}
           rx={4}
-          fill="#1e40af"
+          fill={selected ? "rgba(55, 65, 81, 0.9)" : "rgba(75, 85, 99, 0.8)"}
           pointerEvents="none"
         />
 
