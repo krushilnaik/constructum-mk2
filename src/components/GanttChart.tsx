@@ -102,10 +102,7 @@ export function GanttChart() {
   }, [tasks, ppd, panX, minDate]);
 
   return (
-    <main
-      className="w-screen h-screen bg-slate-100 overflow-auto relative"
-      style={{ maxWidth: "100%", overflow: "auto" }}
-    >
+    <main className="w-full h-full bg-slate-100 overflow-auto relative" style={{ maxWidth: "100%", overflow: "auto" }}>
       {selectedTaskId && (
         <EditPanel
           task={tasks.find((t) => t.id === selectedTaskId)!}

@@ -76,7 +76,7 @@ export function TaskBar(props: Props) {
   return (
     <g>
       {/* bar */}
-      <g transform={`translate(${x}, ${y})`}>
+      <g transform={`translate(${x}, ${y})`} className="transition-shadow hover:drop-shadow-lg">
         <rect
           x={0}
           y={0}
