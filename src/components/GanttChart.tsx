@@ -1,18 +1,14 @@
 import { useMemo, useRef, useState } from "react";
-import type { Segment, Task, DependencyType } from "../types";
+import type { Segment, Task, DependencyType, DependencyCreation } from "../types";
 import { addDays, dateToX, daysBetween } from "../utils";
 import { sampleTasks } from "../data";
-import { EditPanel, TaskBar } from ".";
+import { EditPanel, TaskBar, TaskDropdown } from ".";
 
 export function GanttChart() {
   const [tasks, setTasks] = useState<Task[]>(sampleTasks);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [dependencyCreation, setDependencyCreation] = useState<{
-    fromTaskId: string;
-    fromEndpoint: 'start' | 'end';
-    fromX: number;
-    fromY: number;
-  } | null>(null);
+  const [dropdown, setDropdown] = useState<{ x: number; y: number; taskId: string } | null>(null);
+  const [dependencyCreation, setDependencyCreation] = useState<DependencyCreation | null>(null);
 
 
   // Timeline bounds
@@ -51,6 +47,8 @@ export function GanttChart() {
   const updateTask = (taskId: string, updates: Partial<Task>) => {
     setTasks(tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
   };
+
+
 
   const startDependencyCreation = (taskId: string, endpoint: 'start' | 'end') => {
     const task = tasks.find(t => t.id === taskId);
@@ -190,6 +188,9 @@ export function GanttChart() {
         onClick={() => {
           if (dependencyCreation) {
             setDependencyCreation(null);
+          }
+          if (dropdown) {
+            setDropdown(null);
           }
         }}
       >
@@ -345,6 +346,7 @@ export function GanttChart() {
               onDependencyStart={startDependencyCreation}
               onDependencyEnd={completeDependencyCreation}
               isCreatingDependency={!!dependencyCreation}
+              onDropdownOpen={setDropdown}
             />
           ))}
         </g>
@@ -361,6 +363,19 @@ export function GanttChart() {
         />
         </svg>
       </div>
+
+      {/* Dropdown rendered outside SVG */}
+      {dropdown && (
+        <TaskDropdown
+          x={dropdown.x}
+          y={dropdown.y}
+          taskId={dropdown.taskId}
+          tasks={tasks}
+          onTasksUpdate={setTasks}
+          onTaskSelect={setSelectedTaskId}
+          onClose={() => setDropdown(null)}
+        />
+      )}
     </main>
   );
 }

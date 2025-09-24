@@ -14,3 +14,10 @@ export type Segment = {
   fromSide?: "center" | "right";
   toSide?: "center" | "right";
 };
+
+export type DependencyCreation = {
+  fromTaskId: string;
+  fromEndpoint: 'start' | 'end';
+  fromX: number;
+  fromY: number;
+};

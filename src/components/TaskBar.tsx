@@ -19,6 +19,7 @@ interface Props {
   onDependencyStart?: (taskId: string, endpoint: 'start' | 'end') => void;
   onDependencyEnd?: (taskId: string, endpoint: 'start' | 'end') => void;
   isCreatingDependency?: boolean;
+  onDropdownOpen?: (dropdown: { x: number; y: number; taskId: string } | null) => void;
 }
 
 export function TaskBar(props: Props) {
@@ -39,6 +40,7 @@ export function TaskBar(props: Props) {
     onDependencyStart,
     onDependencyEnd,
     isCreatingDependency,
+    onDropdownOpen,
   } = props;
   const draggingRef = useRef<DragTask>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -216,6 +218,10 @@ export function TaskBar(props: Props) {
         className={`transition-all duration-300 ease-out hover:drop-shadow-lg animate-in fade-in-0 ${
           isDraggingReorder ? "opacity-30" : ""
         }`}
+        style={{
+          transform: `translate(${x}px, ${y}px)`,
+          transition: 'transform 0.3s ease-out'
+        }}
       >
         <rect
           x={0}
@@ -308,9 +314,13 @@ export function TaskBar(props: Props) {
         transform={`translate(8, ${
           headerHeight + (task.row ?? 0) * rowHeight + 6
         })`}
-        className={`transition-transform duration-200 ease-out ${
+        className={`transition-all duration-300 ease-out ${
           isDraggingReorder ? "opacity-30" : ""
         }`}
+        style={{
+          transform: `translate(8px, ${headerHeight + (task.row ?? 0) * rowHeight + 6}px)`,
+          transition: 'transform 0.3s ease-out'
+        }}
       >
         <rect
           x={0}
@@ -320,6 +330,11 @@ export function TaskBar(props: Props) {
           fill={selected ? "#e5e7eb" : "transparent"}
           rx={4}
           onClick={() => onTaskSelect(task.id)}
+          onContextMenu={(ev) => {
+            ev.preventDefault();
+            const dropdownData = { x: ev.clientX, y: ev.clientY, taskId: task.id };
+            onDropdownOpen?.(dropdownData);
+          }}
           style={{ cursor: "pointer" }}
         />
 
