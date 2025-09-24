@@ -1,7 +1,14 @@
 import type { Task } from "./types";
 
 export const sampleTasks: Task[] = [
-  { id: "t1", name: "Project kickoff", start: "2025-09-01", end: "2025-09-03", progress: 100, row: 0 },
+  {
+    id: "t1",
+    name: "Project kickoff",
+    start: "2025-09-01",
+    end: "2025-09-03",
+    progress: 100,
+    row: 0,
+  },
   {
     id: "t2",
     name: "Design",
@@ -36,6 +43,5 @@ export const sampleTasks: Task[] = [
     end: "2025-10-04",
     progress: 0,
     row: 4,
-    dependencies: [{ id: "t4", type: "SS" }],
   },
 ];

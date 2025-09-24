@@ -16,6 +16,9 @@ interface Props {
   onTaskReorder: (taskId: string, newRow: number) => void;
   maxRows: number;
   timelineWidth: number;
+  onDependencyStart?: (taskId: string, endpoint: 'start' | 'end') => void;
+  onDependencyEnd?: (taskId: string, endpoint: 'start' | 'end') => void;
+  isCreatingDependency?: boolean;
 }
 
 export function TaskBar(props: Props) {
@@ -33,6 +36,9 @@ export function TaskBar(props: Props) {
     onTaskReorder,
     maxRows,
     timelineWidth,
+    onDependencyStart,
+    onDependencyEnd,
+    isCreatingDependency,
   } = props;
   const draggingRef = useRef<DragTask>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -58,14 +64,7 @@ export function TaskBar(props: Props) {
         const dur = daysBetween(origStart, origEnd);
         const newEnd = addDays(newStart, dur);
         onTaskUpdate(id, { start: newStart, end: newEnd });
-      } else if (type === "resize-left") {
-        const newStart = addDays(origStart, daysDelta);
-        if (new Date(newStart) >= new Date(origEnd)) return;
-        onTaskUpdate(id, { start: newStart });
-      } else if (type === "resize-right") {
-        const newEnd = addDays(origEnd, daysDelta);
-        if (new Date(newEnd) <= new Date(origStart)) return;
-        onTaskUpdate(id, { end: newEnd });
+
       } else if (type === "reorder") {
         setDragOffset({ x: dx, y: dy });
         const rowDelta = Math.round(dy / rowHeight);
@@ -93,7 +92,7 @@ export function TaskBar(props: Props) {
 
   const startDrag = (
     ev: React.PointerEvent,
-    type: "move" | "resize-left" | "resize-right" | "reorder"
+    type: "move" | "reorder"
   ) => {
     ev.currentTarget.setPointerCapture(ev.pointerId);
     draggingRef.current = {
@@ -105,12 +104,7 @@ export function TaskBar(props: Props) {
       origEnd: task.end,
       origRow: task.row,
     };
-    document.body.style.cursor =
-      type === "move"
-        ? "grabbing"
-        : type === "reorder"
-        ? "ns-resize"
-        : "ew-resize";
+    document.body.style.cursor = type === "move" ? "grabbing" : "ns-resize";
   };
 
   const x = dateToX(minDate, task.start, ppd) + leftColumnWidth + panX;
@@ -254,27 +248,44 @@ export function TaskBar(props: Props) {
           {task.name}
         </text>
 
-        {/* left resize handle */}
-        <rect
-          x={-6}
-          y={0}
-          width={6}
-          height={barHeight}
-          fill="#0ea5a2"
-          rx={2}
-          onPointerDown={(ev) => startDrag(ev, "resize-left")}
-          style={{ cursor: "ew-resize" }}
+        {/* start endpoint */}
+        <circle
+          cx={0}
+          cy={barHeight / 2}
+          r={4}
+          fill={isCreatingDependency ? "#10b981" : "#6b7280"}
+          stroke="#fff"
+          strokeWidth={2}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            if (isCreatingDependency) {
+              onDependencyEnd?.(task.id, 'start');
+            } else {
+              onDependencyStart?.(task.id, 'start');
+            }
+          }}
+          style={{ cursor: "pointer" }}
+          className="hover:fill-blue-500 transition-colors"
         />
-        {/* right resize handle */}
-        <rect
-          x={w}
-          y={0}
-          width={6}
-          height={barHeight}
-          fill="#0ea5a2"
-          rx={2}
-          onPointerDown={(ev) => startDrag(ev, "resize-right")}
-          style={{ cursor: "ew-resize" }}
+        
+        {/* end endpoint */}
+        <circle
+          cx={w}
+          cy={barHeight / 2}
+          r={4}
+          fill={isCreatingDependency ? "#10b981" : "#6b7280"}
+          stroke="#fff"
+          strokeWidth={2}
+          onClick={(ev) => {
+            ev.stopPropagation();
+            if (isCreatingDependency) {
+              onDependencyEnd?.(task.id, 'end');
+            } else {
+              onDependencyStart?.(task.id, 'end');
+            }
+          }}
+          style={{ cursor: "pointer" }}
+          className="hover:fill-blue-500 transition-colors"
         />
       </g>
 

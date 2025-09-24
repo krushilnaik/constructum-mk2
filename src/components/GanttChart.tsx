@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { Segment, Task } from "../types";
+import type { Segment, Task, DependencyType } from "../types";
 import { addDays, dateToX, daysBetween } from "../utils";
 import { sampleTasks } from "../data";
 import { EditPanel, TaskBar } from ".";
@@ -7,6 +7,13 @@ import { EditPanel, TaskBar } from ".";
 export function GanttChart() {
   const [tasks, setTasks] = useState<Task[]>(sampleTasks);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [dependencyCreation, setDependencyCreation] = useState<{
+    fromTaskId: string;
+    fromEndpoint: 'start' | 'end';
+    fromX: number;
+    fromY: number;
+  } | null>(null);
+
 
   // Timeline bounds
   const minDate = useMemo(() => {
@@ -43,6 +50,46 @@ export function GanttChart() {
 
   const updateTask = (taskId: string, updates: Partial<Task>) => {
     setTasks(tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
+  };
+
+  const startDependencyCreation = (taskId: string, endpoint: 'start' | 'end') => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const taskX = dateToX(minDate, endpoint === 'start' ? task.start : task.end, ppd) + leftColumnWidth + panX;
+    const taskY = headerHeight + (task.row ?? 0) * rowHeight + rowHeight / 2;
+    
+    setDependencyCreation({
+      fromTaskId: taskId,
+      fromEndpoint: endpoint,
+      fromX: taskX,
+      fromY: taskY
+    });
+  };
+
+  const completeDependencyCreation = (toTaskId: string, toEndpoint: 'start' | 'end') => {
+    if (!dependencyCreation || dependencyCreation.fromTaskId === toTaskId) {
+      setDependencyCreation(null);
+      return;
+    }
+
+    const fromEndpoint = dependencyCreation.fromEndpoint;
+    let depType: DependencyType;
+    
+    if (fromEndpoint === 'end' && toEndpoint === 'start') depType = 'FS';
+    else if (fromEndpoint === 'start' && toEndpoint === 'start') depType = 'SS';
+    else if (fromEndpoint === 'end' && toEndpoint === 'end') depType = 'FF';
+    else depType = 'SF';
+
+    const toTask = tasks.find(t => t.id === toTaskId);
+    if (toTask) {
+      const newDep = { id: dependencyCreation.fromTaskId, type: depType };
+      const existingDeps = toTask.dependencies || [];
+      const updatedDeps = [...existingDeps.filter(d => d.id !== dependencyCreation.fromTaskId), newDep];
+      updateTask(toTaskId, { dependencies: updatedDeps });
+    }
+    
+    setDependencyCreation(null);
   };
 
   const reorderTask = (taskId: string, newRow: number) => {
@@ -125,7 +172,7 @@ export function GanttChart() {
   }, [tasks, ppd, panX, minDate]);
 
   return (
-    <main className="w-full h-full bg-slate-100 overflow-auto relative" style={{ maxWidth: "100%", overflow: "auto" }}>
+    <main className="w-full h-full bg-slate-100 overflow-hidden relative flex">
       {selectedTaskId && (
         <EditPanel
           task={tasks.find((t) => t.id === selectedTaskId)!}
@@ -135,7 +182,18 @@ export function GanttChart() {
         />
       )}
 
-      <svg ref={svgRef} width={Math.max(1000, timelineWidth + leftColumnWidth + 100)} height={chartHeight}>
+      <div 
+        className={`flex-1 overflow-auto transition-all duration-300 ease-out ${
+          selectedTaskId ? 'ml-80' : 'ml-0'
+        }`}
+
+        onClick={() => {
+          if (dependencyCreation) {
+            setDependencyCreation(null);
+          }
+        }}
+      >
+        <svg ref={svgRef} width={Math.max(1000, timelineWidth + leftColumnWidth + 100)} height={chartHeight}>
         {/* Background */}
         <rect x={0} y={0} width="100%" height="100%" fill="#ffffff" />
 
@@ -147,13 +205,20 @@ export function GanttChart() {
           {/* day columns */}
           {Array.from({ length: totalDays }).map((_, i) => {
             const dayISO = addDays(minDate, i);
+            const date = new Date(dayISO);
+            const dayNum = date.getDate();
+            const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
             const x = i * ppd;
             const isToday = dayISO === todayISO;
             return (
               <g key={i} transform={`translate(${x},0)`}>
                 <rect x={0} y={0} width={ppd} height={headerHeight} fill={isToday ? "#ffe6e6" : "#fff"} stroke="#eee" />
-                <text x={4} y={20} fontSize={12} fill="#333">
-                  {dayISO}
+                <text x={4} y={20} fontSize={14} fill={isWeekend ? "#999" : "#333"} className="font-medium">
+                  {dayNum}
+                </text>
+                <text x={4} y={36} fontSize={10} fill={isWeekend ? "#aaa" : "#666"}>
+                  {dayOfWeek}
                 </text>
               </g>
             );
@@ -172,6 +237,7 @@ export function GanttChart() {
 
         {/* Dependencies (under bars) */}
         <g>
+
           {dependencySegments.map((s, idx) => {
             const offset = 40;
             let pathD: string;
@@ -242,6 +308,9 @@ export function GanttChart() {
               onTaskReorder={reorderTask}
               maxRows={rows}
               timelineWidth={timelineWidth}
+              onDependencyStart={startDependencyCreation}
+              onDependencyEnd={completeDependencyCreation}
+              isCreatingDependency={!!dependencyCreation}
             />
           ))}
         </g>
@@ -256,7 +325,8 @@ export function GanttChart() {
           strokeDasharray="4 4"
           strokeWidth={1.5}
         />
-      </svg>
+        </svg>
+      </div>
     </main>
   );
 }
