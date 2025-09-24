@@ -45,6 +45,29 @@ export function GanttChart() {
     setTasks(tasks.map((t) => (t.id === taskId ? { ...t, ...updates } : t)));
   };
 
+  const reorderTask = (taskId: string, newRow: number) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.row === newRow) return;
+
+    const updatedTasks = tasks.map(t => {
+      if (t.id === taskId) {
+        return { ...t, row: newRow };
+      }
+      // Shift other tasks if needed
+      if (t.row !== undefined && task.row !== undefined) {
+        if (newRow > task.row && t.row > task.row && t.row <= newRow) {
+          return { ...t, row: t.row - 1 };
+        }
+        if (newRow < task.row && t.row < task.row && t.row >= newRow) {
+          return { ...t, row: t.row + 1 };
+        }
+      }
+      return t;
+    });
+    
+    setTasks(updatedTasks);
+  };
+
   // simple dependency lines generator
   const dependencySegments = useMemo(() => {
     const segments: Segment[] = [];
@@ -216,6 +239,9 @@ export function GanttChart() {
               selected={selectedTaskId === t.id}
               onTaskSelect={setSelectedTaskId}
               onTaskUpdate={updateTask}
+              onTaskReorder={reorderTask}
+              maxRows={rows}
+              timelineWidth={timelineWidth}
             />
           ))}
         </g>
