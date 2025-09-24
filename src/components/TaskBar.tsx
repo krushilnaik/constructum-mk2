@@ -86,6 +86,7 @@ export function TaskBar(props: Props) {
 
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
@@ -272,7 +273,7 @@ export function TaskBar(props: Props) {
         <circle
           cx={0}
           cy={barHeight / 2}
-          r={4}
+          r={6}
           fill={isCreatingDependency ? "#10b981" : "#6b7280"}
           stroke="#fff"
           strokeWidth={2}
@@ -292,7 +293,7 @@ export function TaskBar(props: Props) {
         <circle
           cx={w}
           cy={barHeight / 2}
-          r={4}
+          r={6}
           fill={isCreatingDependency ? "#10b981" : "#6b7280"}
           stroke="#fff"
           strokeWidth={2}
