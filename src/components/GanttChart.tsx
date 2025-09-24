@@ -29,12 +29,12 @@ export function GanttChart() {
   // derived days count
   const totalDays = useMemo(() => daysBetween(minDate, maxDate) + 1, [minDate, maxDate]);
 
-  const ppd = 60;
+  const ppd = 45;
   const panX = 0;
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const rowHeight = 36;
+  const rowHeight = 48;
   const headerHeight = 56;
   const leftColumnWidth = 220;
 
@@ -214,10 +214,25 @@ export function GanttChart() {
             return (
               <g key={i} transform={`translate(${x},0)`}>
                 <rect x={0} y={0} width={ppd} height={headerHeight} fill={isToday ? "#ffe6e6" : "#fff"} stroke="#eee" />
-                <text x={4} y={20} fontSize={14} fill={isWeekend ? "#999" : "#333"} className="font-medium">
+                <text
+                  x={ppd / 2}
+                  y={22}
+                  fontSize={14}
+                  fill={isWeekend ? "#999" : "#333"}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                  className="font-semibold"
+                >
                   {dayNum}
                 </text>
-                <text x={4} y={36} fontSize={10} fill={isWeekend ? "#aaa" : "#666"}>
+                <text
+                  x={ppd / 2}
+                  y={38}
+                  fontSize={10}
+                  fill={isWeekend ? "#aaa" : "#666"}
+                  textAnchor="middle"
+                  alignmentBaseline="middle"
+                >
                   {dayOfWeek}
                 </text>
               </g>

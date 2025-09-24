@@ -112,8 +112,8 @@ export function TaskBar(props: Props) {
     6,
     dateToX(minDate, task.end, ppd) - dateToX(minDate, task.start, ppd)
   );
-  const y = headerHeight + (task.row ?? 0) * rowHeight + 6;
-  const barHeight = rowHeight - 12;
+  const y = headerHeight + (task.row ?? 0) * rowHeight + 4;
+  const barHeight = rowHeight - 8;
 
   const isDraggingReorder =
     draggingRef.current?.type === "reorder" &&
@@ -172,7 +172,7 @@ export function TaskBar(props: Props) {
               y={16}
               fontSize={14}
               fill="#333"
-              className="font-medium"
+              className="font-extrabold"
             >
               {task.name}
             </text>
@@ -200,8 +200,11 @@ export function TaskBar(props: Props) {
               rx={4}
               fill="#3b82f6"
             />
-            <text x={8} y={barHeight / 2 + 4} fontSize={12} fill="#fff">
+            <text x={8} y={barHeight / 2 - 2} fontSize={12} fill="#fff">
               {task.name}
+            </text>
+            <text x={8} y={barHeight / 2 + 12} fontSize={10} fill="#fff" opacity={0.9}>
+              {new Date(task.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(task.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </text>
           </g>
         </g>
@@ -240,12 +243,22 @@ export function TaskBar(props: Props) {
         {/* label */}
         <text
           x={8}
-          y={barHeight / 2 + 4}
+          y={barHeight / 2 - 2}
           fontSize={12}
           fill="#fff"
           pointerEvents="none"
         >
           {task.name}
+        </text>
+        <text
+          x={8}
+          y={barHeight / 2 + 12}
+          fontSize={10}
+          fill="#fff"
+          opacity={0.9}
+          pointerEvents="none"
+        >
+          {new Date(task.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(task.end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </text>
 
         {/* start endpoint */}
@@ -329,11 +342,8 @@ export function TaskBar(props: Props) {
           <rect x={1} y={20} width={4} height={1} rx={0.5} />
         </g>
 
-        <text x={12} y={16} fontSize={14} fill="#333" className="font-medium">
+        <text x={12} y={20} fontSize={14} fill="#333" className="font-medium">
           {task.name}
-        </text>
-        <text x={12} y={32} fontSize={12} fill="#666">
-          {task.start} → {task.end}
         </text>
       </g>
     </g>
