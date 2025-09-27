@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { Task } from '../types';
 import { addDays } from '../utils';
+import type { Task } from '../types/database';
 
 interface TaskDropdownProps {
   x: number;
@@ -15,6 +15,7 @@ interface TaskDropdownProps {
 export function TaskDropdown({ x, y, taskId, tasks, onTasksUpdate, onTaskSelect, onClose }: TaskDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -26,30 +27,43 @@ export function TaskDropdown({ x, y, taskId, tasks, onTasksUpdate, onTaskSelect,
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  // Create new task with default values
   const addTask = () => {
     const newTask: Task = {
       id: `task-${Date.now()}`,
+      project_id: tasks[0]?.project_id || '',
       name: 'New Task',
-      start: new Date().toISOString().slice(0, 10),
-      end: addDays(new Date().toISOString().slice(0, 10), 1),
+      description: null,
+      duration_days: 1,
+      start_date: new Date().toISOString().slice(0, 10),
+      end_date: addDays(new Date().toISOString().slice(0, 10), 1),
+      parent_id: null,
+      task_type: 'task',
+      depends_on: [],
+      crew_size: 1,
       progress: 0,
-      row: tasks.length
+      is_critical: false,
+      color: '#6b7280',
+      sort_order: tasks.length,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     onTasksUpdate([...tasks, newTask]);
     onTaskSelect(newTask.id);
     onClose();
   };
 
+  // Delete task and reorder remaining tasks
   const deleteTask = () => {
     const taskToDelete = tasks.find(t => t.id === taskId);
     if (!taskToDelete) return;
     
-    const deletedRow = taskToDelete.row ?? 0;
+    const deletedSortOrder = taskToDelete.sort_order ?? 0;
     const updatedTasks = tasks
       .filter(t => t.id !== taskId)
       .map(t => ({
         ...t,
-        row: (t.row ?? 0) > deletedRow ? (t.row ?? 0) - 1 : t.row
+        sort_order: (t.sort_order ?? 0) > deletedSortOrder ? (t.sort_order ?? 0) - 1 : t.sort_order
       }));
     
     onTasksUpdate(updatedTasks);

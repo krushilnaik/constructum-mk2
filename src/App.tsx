@@ -1,29 +1,42 @@
-import { GanttChart } from "./components";
+import { useEffect, useState } from 'react';
+import { RouterProvider } from '@tanstack/react-router';
+import { supabase } from './supabase';
+import { authRouter, appRouter } from './router';
+import type { User } from '@supabase/supabase-js';
 
-interface Props {}
+function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-function App(props: Props) {
-  const {} = props;
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-  return (
-    <div className="w-screen h-screen grid grid-rows-[4rem_auto]">
-      <header className="border-b px-4 py-4 flex items-center justify-between w-full">
-        <div>
-          <img src="/logo.png" alt="" />
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            Constructum
-            <span className="ml-2 px-2 py-0.5 rounded bg-yellow-200 text-yellow-800 text-xs font-semibold align-middle">
-              Beta
-            </span>
-          </h1>
-        </div>
-        <button className="flex items-center justify-center gap-2 rounded-md text-sm font-medium cursor-pointer border h-10 px-4 py-2">
-          Sign Out
-        </button>
-      </header>
-      <GanttChart />
-    </div>
-  );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!user) {
+    // Redirect to signin if not on auth pages
+    if (!window.location.pathname.startsWith('/sign')) {
+      window.location.href = '/signin';
+      return null;
+    }
+    return <RouterProvider router={authRouter} />;
+  }
+
+  return <RouterProvider router={appRouter} />;
 }
 
 export default App;

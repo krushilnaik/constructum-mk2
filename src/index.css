@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* Custom sidebar utilities */
+.w-sidebar {
+  width: 21.25rem; /* 340px - equivalent to w-85 */
+}
+
+.ml-sidebar {
+  margin-left: 21.25rem; /* 340px - equivalent to ml-85 */
+}
+
 @keyframes dropdownIn {
   from {
     opacity: 0;
@@ -9,4 +18,12 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
