@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { addDays } from '../utils';
 import type { Task } from '../types/database';
 
@@ -14,6 +15,7 @@ interface TaskDropdownProps {
 
 export function TaskDropdown({ x, y, taskId, tasks, onTasksUpdate, onTaskSelect, onClose }: TaskDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -75,6 +77,14 @@ export function TaskDropdown({ x, y, taskId, tasks, onTasksUpdate, onTaskSelect,
     onClose();
   };
 
+  const viewTodos = () => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      navigate({ to: '/project/$projectId/todos', params: { projectId: task.project_id } });
+    }
+    onClose();
+  };
+
   return (
     <div
       ref={dropdownRef}
@@ -91,6 +101,12 @@ export function TaskDropdown({ x, y, taskId, tasks, onTasksUpdate, onTaskSelect,
         onClick={editTask}
       >
         Edit Task
+      </button>
+      <button
+        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 whitespace-nowrap"
+        onClick={viewTodos}
+      >
+        View Todos
       </button>
       <button
         className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 whitespace-nowrap"

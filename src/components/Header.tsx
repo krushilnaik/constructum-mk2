@@ -8,7 +8,7 @@ export function Header() {
   const isProjectPage = routerState.location.pathname.startsWith("/project/");
 
   return (
-    <header className="border-b px-4 py-4 flex items-center justify-between w-full">
+    <header className="px-4 h-16 flex items-center justify-between w-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.2)] z-10 max-w-screen">
       <div className="flex items-center gap-4">
         {/* Back to dashboard button */}
         {isProjectPage && (
@@ -27,7 +27,7 @@ export function Header() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             Constructum
             <span className="ml-2 px-2 py-0.5 rounded bg-yellow-200 text-yellow-800 text-xs font-semibold align-middle">
-              Beta
+              Gamma
             </span>
           </h1>
         </div>

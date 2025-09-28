@@ -1,11 +1,7 @@
-import {
-  createRouter,
-  createRoute,
-  createRootRoute,
-  Outlet,
-} from "@tanstack/react-router";
+import { createRouter, createRoute, createRootRoute, Outlet } from "@tanstack/react-router";
 import { Scheduler } from "./pages/Scheduler";
 import { SignIn, SignUp, Dashboard } from "./pages";
+import { Todos } from "./pages/Todos";
 import { Header } from "./components";
 
 // Auth router (for unauthenticated users)
@@ -51,7 +47,13 @@ const schedulerRoute = createRoute({
   component: Scheduler,
 });
 
-const appRouteTree = appRootRoute.addChildren([dashboardRoute, schedulerRoute]);
+const todosRoute = createRoute({
+  getParentRoute: () => appRootRoute,
+  path: "/project/$projectId/todos",
+  component: Todos,
+});
+
+const appRouteTree = appRootRoute.addChildren([dashboardRoute, schedulerRoute, todosRoute]);
 
 export const appRouter = createRouter({ routeTree: appRouteTree });
 

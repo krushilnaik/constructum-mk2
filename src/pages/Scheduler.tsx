@@ -6,26 +6,27 @@ import type { Project } from "../types/database";
 
 export function Scheduler() {
   const { projectId } = useParams({ from: "/project/$projectId" });
+
+  console.log("Scheduler loaded with projectId:", projectId);
+
   const [projects, setProjects] = useState<Project[]>([]);
   // Initialize selected projects from URL param or localStorage
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(() => {
     if (projectId) return new Set([projectId]);
-    const saved = localStorage.getItem('gantt-selected-projects');
+    const saved = localStorage.getItem("gantt-selected-projects");
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
 
   // Fetch user's projects and handle initial selection
   useEffect(() => {
     const fetchProjects = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
-      
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("owner_id", user.id)
-        .order("name");
-        
+
+      const { data, error } = await supabase.from("projects").select("*").eq("owner_id", user.id).order("name");
+
       if (error) console.error("Error fetching projects:", error);
       else {
         const projectData = data || [];
@@ -33,7 +34,7 @@ export function Scheduler() {
         // Auto-select project from URL or first project if none saved
         if (projectId) {
           setSelectedProjects(new Set([projectId]));
-        } else if (!localStorage.getItem('gantt-selected-projects') && projectData.length > 0) {
+        } else if (!localStorage.getItem("gantt-selected-projects") && projectData.length > 0) {
           setSelectedProjects(new Set([projectData[0].id]));
         }
       }
@@ -43,7 +44,7 @@ export function Scheduler() {
 
   // Persist selected projects to localStorage
   useEffect(() => {
-    localStorage.setItem('gantt-selected-projects', JSON.stringify([...selectedProjects]));
+    localStorage.setItem("gantt-selected-projects", JSON.stringify([...selectedProjects]));
   }, [selectedProjects]);
 
   return (
@@ -52,13 +53,13 @@ export function Scheduler() {
       <div className="p-4 bg-white border-b border-gray-200">
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setSelectedProjects(new Set(projects.map(p => p.id)))}
+            onClick={() => setSelectedProjects(new Set(projects.map((p) => p.id)))}
             className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-all duration-200 transform hover:scale-105"
           >
             Select All
           </button>
           {/* Individual project toggle buttons */}
-          {projects.map(project => {
+          {projects.map((project) => {
             const isSelected = selectedProjects.has(project.id);
             return (
               <button
@@ -86,7 +87,7 @@ export function Scheduler() {
           )}
         </div>
       </div>
-      
+
       {/* Gantt chart display */}
       <div className="flex-1">
         <GanttChart selectedProjects={selectedProjects} projects={projects} />
