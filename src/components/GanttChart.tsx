@@ -6,16 +6,16 @@ import { EditPanel, TaskBar, TaskDropdown } from ".";
 import type { Task, Project } from "../types/database";
 
 interface Props {
-  selectedProjects: Set<string>;
-  projects: Project[];
+  project: Project;
 }
 
-export function GanttChart({ selectedProjects, projects }: Props) {
+export function GanttChart({ project }: Props) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskDependencies, setTaskDependencies] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dropdown, setDropdown] = useState<{ x: number; y: number; taskId: string } | null>(null);
   const [dependencyCreation, setDependencyCreation] = useState<DependencyCreation | null>(null);
+  const [dragState, setDragState] = useState<{ taskId: string; startY: number; currentY: number } | null>(null);
 
   // Restore selected task from localStorage
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
@@ -30,10 +30,8 @@ export function GanttChart({ selectedProjects, projects }: Props) {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const userProjectIds = projects.map((p) => p.id);
-
       const [tasksResult, dependenciesResult] = await Promise.all([
-        supabase.from("tasks").select("*").in("project_id", userProjectIds).order("sort_order"),
+        supabase.from("tasks").select("*").eq("project_id", project.id).order("sort_order"),
         supabase.from("task_dependencies").select("*"),
       ]);
 
@@ -51,8 +49,8 @@ export function GanttChart({ selectedProjects, projects }: Props) {
 
       setLoading(false);
     };
-    if (projects.length > 0) fetchData();
-  }, [projects]);
+    if (project) fetchData();
+  }, [project]);
 
   // Calculate timeline bounds from task dates
   const { minDate, totalDays } = useMemo(() => {
@@ -79,34 +77,14 @@ export function GanttChart({ selectedProjects, projects }: Props) {
   const timelineWidth = totalDays * ppd;
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Group tasks by project and calculate layout
-  const { filteredTasks, tasksByProject, projectSections, totalRows } = useMemo(() => {
-    const filtered =
-      selectedProjects.size === 0
-        ? tasks
-        : tasks.filter((task) => task.project_id && selectedProjects.has(task.project_id));
-
-    const byProject = new Map<string, Task[]>();
-    filtered.forEach((task) => {
-      const projectId = task.project_id || "unassigned";
-      if (!byProject.has(projectId)) byProject.set(projectId, []);
-      byProject.get(projectId)!.push(task);
-    });
-
-    const sections: Array<{ projectId: string; startRow: number; taskCount: number }> = [];
-    let currentRow = 0;
-    for (const [projectId, projectTasks] of byProject) {
-      sections.push({ projectId, startRow: currentRow, taskCount: projectTasks.length });
-      currentRow += projectTasks.length + 1;
-    }
-
+  // Calculate layout for single project with drag reordering
+  const { filteredTasks, totalRows } = useMemo(() => {
+    const filtered = tasks.filter((task) => task.project_id === project.id);
     return {
-      filteredTasks: filtered,
-      tasksByProject: byProject,
-      projectSections: sections,
-      totalRows: sections.reduce((sum, section) => sum + section.taskCount + 1, 0),
+      filteredTasks: filtered.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+      totalRows: filtered.length,
     };
-  }, [tasks, selectedProjects]);
+  }, [tasks, project.id]);
 
   useEffect(() => {
     selectedTaskId
@@ -133,17 +111,92 @@ export function GanttChart({ selectedProjects, projects }: Props) {
     updateTask(taskId, { start_date: newStartDate, end_date: newEndDate });
   };
 
-  // Calculate dependency arrow paths between tasks
+  const handleDragStart = (taskId: string, startY: number) => {
+    let currentDragState = { taskId, startY, currentY: startY };
+    setDragState(currentDragState);
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      currentDragState = { ...currentDragState, currentY: e.clientY };
+      setDragState(currentDragState);
+    };
+    
+    const handleMouseUp = async () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      const draggedTaskIndex = filteredTasks.findIndex(t => t.id === taskId);
+      const deltaY = currentDragState.currentY - currentDragState.startY;
+      const newIndex = Math.max(0, Math.min(filteredTasks.length - 1, draggedTaskIndex + Math.round(deltaY / rowHeight)));
+      
+      // Clear drag state first to remove visual transforms
+      setDragState(null);
+      
+      if (newIndex !== draggedTaskIndex) {
+        // Wait a frame for the visual transform to clear, then update state
+        requestAnimationFrame(() => {
+          const reorderedTasks = [...filteredTasks];
+          const [draggedTask] = reorderedTasks.splice(draggedTaskIndex, 1);
+          reorderedTasks.splice(newIndex, 0, draggedTask);
+          
+          const updates = reorderedTasks.map((task, index) => ({
+            id: task.id,
+            sort_order: index
+          }));
+          
+          // Update local state
+          setTasks(prev => prev.map(t => {
+            const update = updates.find(u => u.id === t.id);
+            return update ? { ...t, sort_order: update.sort_order } : t;
+          }));
+          
+          // Update database in background
+          updates.forEach(async (update) => {
+            const { error } = await supabase.from('tasks').update({ sort_order: update.sort_order }).eq('id', update.id);
+            if (error) console.error('Database update error:', error);
+          });
+        });
+      }
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Calculate dependency arrow paths between tasks with drag offsets
   const dependencySegments = useMemo(() => {
     const segments: Segment[] = [];
     const taskPositions = new Map<string, number>();
 
-    projectSections.forEach((section) => {
-      const projectTasks = tasksByProject.get(section.projectId) || [];
-      projectTasks.forEach((task, taskIndex) => {
-        taskPositions.set(task.id, section.startRow + taskIndex + 1);
-      });
+    filteredTasks.forEach((task, taskIndex) => {
+      taskPositions.set(task.id, taskIndex);
     });
+
+    // Helper function to get task Y position with drag offset
+    const getTaskY = (taskId: string, baseRow: number) => {
+      let yOffset = 0;
+      
+      if (dragState) {
+        const isDragging = dragState.taskId === taskId;
+        const dragOffset = isDragging ? dragState.currentY - dragState.startY : 0;
+        
+        if (!isDragging) {
+          // Calculate if other tasks should shift
+          const draggedIndex = filteredTasks.findIndex(t => t.id === dragState.taskId);
+          const deltaY = dragState.currentY - dragState.startY;
+          const targetIndex = Math.max(0, Math.min(filteredTasks.length - 1, draggedIndex + Math.round(deltaY / rowHeight)));
+          
+          if (draggedIndex < targetIndex && baseRow > draggedIndex && baseRow <= targetIndex) {
+            yOffset = -rowHeight;
+          } else if (draggedIndex > targetIndex && baseRow >= targetIndex && baseRow < draggedIndex) {
+            yOffset = rowHeight;
+          }
+        } else {
+          yOffset = dragOffset;
+        }
+      }
+      
+      return headerHeight + baseRow * rowHeight + rowHeight / 2 + yOffset;
+    };
 
     for (const t of filteredTasks) {
       if (!t.depends_on?.length || !t.start_date || !t.end_date) continue;
@@ -152,8 +205,8 @@ export function GanttChart({ selectedProjects, projects }: Props) {
         const source = filteredTasks.find((d) => d.id === depId);
         if (!source?.start_date || !source?.end_date) continue;
 
-        const sourceRow = taskPositions.get(source.id) ?? 0;
-        const targetRow = taskPositions.get(t.id) ?? 0;
+        const sourceRow = (taskPositions.get(source.id) ?? 0);
+        const targetRow = (taskPositions.get(t.id) ?? 0);
         const depType = (taskDependencies.get(`${depId}-${t.id}`) || "FS") as DependencyType;
 
         const baseX = leftColumnWidth + panX;
@@ -181,14 +234,14 @@ export function GanttChart({ selectedProjects, projects }: Props) {
           toSide = "right";
         }
 
-        const fromY = headerHeight + sourceRow * rowHeight + rowHeight / 2;
-        const toY = headerHeight + targetRow * rowHeight + rowHeight / 2;
+        const fromY = getTaskY(source.id, sourceRow);
+        const toY = getTaskY(t.id, targetRow);
 
         segments.push({ fromX, fromY, toX, toY, type: depType, fromSide, toSide });
       }
     }
     return segments;
-  }, [filteredTasks, ppd, panX, minDate, projectSections, tasksByProject, taskDependencies]);
+  }, [filteredTasks, ppd, panX, minDate, taskDependencies, dragState, rowHeight]);
 
   if (loading)
     return (
@@ -233,26 +286,7 @@ export function GanttChart({ selectedProjects, projects }: Props) {
             if (dropdown) setDropdown(null);
           }}
         >
-          {/* Project section headers */}
-          {projectSections.map((section) => {
-            const project = projects.find((p) => p.id === section.projectId);
-            return (
-              <button
-                key={`header-${section.projectId}`}
-                className="absolute bg-gradient-to-r from-gray-100 to-gray-200 hover:from-blue-50 hover:to-blue-100 rounded-lg px-3 py-2 font-semibold text-gray-700 hover:text-blue-700 z-10 border border-gray-300 hover:border-blue-300"
-                style={{
-                  left: "8px",
-                  top: `${headerHeight + section.startRow * rowHeight + 6}px`,
-                  width: `${leftColumnWidth + timelineWidth - 16}px`,
-                  height: `${rowHeight - 12}px`,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {project?.name || "Unknown Project"}
-              </button>
-            );
-          })}
+
 
           <svg ref={svgRef} width={timelineWidth + leftColumnWidth} height={chartHeight}>
             {/* Chart background */}
@@ -405,14 +439,29 @@ export function GanttChart({ selectedProjects, projects }: Props) {
             );
           })}
 
-          {/* Render task bars for each project */}
-          {projectSections.map((section) => {
-            const projectTasks = tasksByProject.get(section.projectId) || [];
-            return projectTasks.map((task, taskIndex) => (
+          {/* Render task bars */}
+          {filteredTasks.map((task, taskIndex) => {
+            const isDragging = dragState?.taskId === task.id;
+            const dragOffset = isDragging ? dragState.currentY - dragState.startY : 0;
+            
+            let visualOffset = 0;
+            if (dragState && dragState.taskId !== task.id) {
+              const draggedIndex = filteredTasks.findIndex(t => t.id === dragState.taskId);
+              const deltaY = dragState.currentY - dragState.startY;
+              const targetIndex = Math.max(0, Math.min(filteredTasks.length - 1, draggedIndex + Math.round(deltaY / rowHeight)));
+              
+              if (draggedIndex < targetIndex && taskIndex > draggedIndex && taskIndex <= targetIndex) {
+                visualOffset = -rowHeight;
+              } else if (draggedIndex > targetIndex && taskIndex >= targetIndex && taskIndex < draggedIndex) {
+                visualOffset = rowHeight;
+              }
+            }
+            
+            return (
               <TaskBar
                 key={task.id}
                 task={task}
-                visualRow={section.startRow + taskIndex + 1}
+                visualRow={taskIndex}
                 minDate={minDate}
                 ppd={ppd}
                 leftColumnWidth={leftColumnWidth}
@@ -423,8 +472,15 @@ export function GanttChart({ selectedProjects, projects }: Props) {
                 onTaskSelect={setSelectedTaskId}
                 onTaskResize={handleTaskResize}
                 onDropdownOpen={setDropdown}
+onDragStart={handleDragStart}
+                style={{
+                  transform: `translateY(${dragOffset + visualOffset}px)`,
+                  opacity: isDragging ? 0.6 : 1,
+                  transition: isDragging ? 'none' : 'all 200ms ease-out',
+                  zIndex: isDragging ? 50 : 10,
+                }}
               />
-            ));
+            );
           })}
         </div>
       </div>

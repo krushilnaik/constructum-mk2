@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { dateToX } from "../utils";
 import type { Task } from "../types/database";
 
@@ -14,6 +15,8 @@ interface Props {
   onTaskSelect: (id: string) => void;
   onTaskResize?: (taskId: string, newStartDate: string, newEndDate: string) => void;
   onDropdownOpen?: (dropdown: { x: number; y: number; taskId: string } | null) => void;
+  style?: React.CSSProperties;
+  onDragStart?: (taskId: string, startY: number) => void;
 }
 
 export function TaskBar({
@@ -29,7 +32,10 @@ export function TaskBar({
   onTaskSelect,
   onTaskResize,
   onDropdownOpen,
+  style,
+  onDragStart,
 }: Props) {
+  const [isDragging, setIsDragging] = useState(false);
   const x = dateToX(minDate, task.start_date || "", ppd) + leftColumnWidth + panX;
   const w = Math.max(6, dateToX(minDate, task.end_date || "", ppd) - dateToX(minDate, task.start_date || "", ppd));
   const currentRow = visualRow ?? task.sort_order ?? 0;
@@ -123,17 +129,55 @@ export function TaskBar({
           selected
             ? "bg-blue-100 border-2 border-blue-300 shadow-md scale-105"
             : "bg-white hover:bg-gray-50 hover:shadow-lg hover:scale-102 border border-gray-200"
-        } animate-in fade-in-0 slide-in-from-left-2 truncate`}
+        } animate-in fade-in-0 slide-in-from-left-2 truncate cursor-move`}
         style={{
           left: "8px",
           top: `${headerHeight + currentRow * rowHeight + 6}px`,
           width: `${leftColumnWidth - 16}px`,
           height: `${rowHeight - 12}px`,
+          ...style,
         }}
-        onClick={() => onTaskSelect(task.id)}
+        onClick={(e) => {
+          if (!isDragging) {
+            onTaskSelect(task.id);
+          }
+        }}
         onContextMenu={(ev) => {
           ev.preventDefault();
           onDropdownOpen?.({ x: ev.clientX, y: ev.clientY, taskId: task.id });
+        }}
+onMouseDown={(e) => {
+          e.preventDefault();
+          const startX = e.clientX;
+          const startY = e.clientY;
+          let hasMoved = false;
+          
+          const handleMouseMove = (moveEvent: MouseEvent) => {
+            const deltaX = Math.abs(moveEvent.clientX - startX);
+            const deltaY = Math.abs(moveEvent.clientY - startY);
+            
+            if (!hasMoved && (deltaX > 3 || deltaY > 3)) {
+              hasMoved = true;
+              setIsDragging(true);
+              if (onDragStart) {
+                onDragStart(task.id, startY);
+              }
+            }
+          };
+          
+          const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            
+            if (hasMoved) {
+              setTimeout(() => {
+                setIsDragging(false);
+              }, 100);
+            }
+          };
+          
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
         }}
       >
         <div className="w-4 h-6 flex flex-col justify-center items-center mr-3 text-gray-400">
@@ -167,6 +211,7 @@ export function TaskBar({
           boxShadow: selected
             ? `0 8px 32px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3), 0 0 0 2px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`
             : `0 4px 16px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
+          ...style,
         }}
         onClick={() => onTaskSelect(task.id)}
         onMouseDown={handleDrag}
