@@ -1,64 +1,62 @@
-import { createRouter, createRoute, createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRouter, createRoute, createRootRoute } from "@tanstack/react-router";
 import { Scheduler } from "./pages/Scheduler";
-import { SignIn, SignUp, Dashboard } from "./pages";
+import { SignIn, SignUp, Dashboard, Home } from "./pages";
 import { Todos } from "./pages/Todos";
-import { Header } from "./components";
+import { Layout } from "./components";
 
-// Auth router (for unauthenticated users)
-const authRootRoute = createRootRoute({
-  component: () => <Outlet />,
+const rootRoute = createRootRoute({
+  component: Layout,
+});
+
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: Home,
 });
 
 const signInRoute = createRoute({
-  getParentRoute: () => authRootRoute,
+  getParentRoute: () => rootRoute,
   path: "/signin",
   component: SignIn,
 });
 
 const signUpRoute = createRoute({
-  getParentRoute: () => authRootRoute,
+  getParentRoute: () => rootRoute,
   path: "/signup",
   component: SignUp,
 });
 
-const authRouteTree = authRootRoute.addChildren([signInRoute, signUpRoute]);
-
-export const authRouter = createRouter({ routeTree: authRouteTree });
-
-// App router (for authenticated users)
-const appRootRoute = createRootRoute({
-  component: () => (
-    <div className="w-screen h-screen grid grid-rows-[4rem_auto]">
-      <Header />
-      <Outlet />
-    </div>
-  ),
-});
-
 const dashboardRoute = createRoute({
-  getParentRoute: () => appRootRoute,
-  path: "/",
+  getParentRoute: () => rootRoute,
+  path: "/dashboard",
   component: Dashboard,
 });
 
 const schedulerRoute = createRoute({
-  getParentRoute: () => appRootRoute,
+  getParentRoute: () => rootRoute,
   path: "/project/$projectId",
   component: Scheduler,
 });
 
 const todosRoute = createRoute({
-  getParentRoute: () => appRootRoute,
+  getParentRoute: () => rootRoute,
   path: "/project/$projectId/todos",
   component: Todos,
 });
 
-const appRouteTree = appRootRoute.addChildren([dashboardRoute, schedulerRoute, todosRoute]);
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  signInRoute,
+  signUpRoute,
+  dashboardRoute,
+  schedulerRoute,
+  todosRoute,
+]);
 
-export const appRouter = createRouter({ routeTree: appRouteTree });
+export const router = createRouter({ routeTree });
 
 declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof authRouter | typeof appRouter;
+    router: typeof router;
   }
 }

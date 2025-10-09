@@ -1,6 +1,7 @@
 export const daysBetween = (aISO: string | Date, bISO: string | Date) => {
-  const a = new Date(aISO);
-  const b = new Date(bISO);
+  // Parse dates as local dates to avoid timezone issues
+  const a = typeof aISO === "string" ? new Date(aISO + "T00:00:00") : aISO;
+  const b = typeof bISO === "string" ? new Date(bISO + "T00:00:00") : bISO;
   const ms = b.getTime() - a.getTime();
   return Math.round(ms / (24 * 60 * 60 * 1000));
 };

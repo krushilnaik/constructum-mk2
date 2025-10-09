@@ -1,19 +1,36 @@
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState, Link } from "@tanstack/react-router";
 import { SignOutButton } from "./SignOutButton";
+import { useEffect, useState } from "react";
+import { supabase } from "../supabase";
+import type { User } from "@supabase/supabase-js";
 
 export function Header() {
   const navigate = useNavigate();
   const routerState = useRouterState();
-  // Show back button on project pages
+  const [user, setUser] = useState<User | null>(null);
+
   const isProjectPage = routerState.location.pathname.startsWith("/project/");
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
-    <header className="px-4 h-16 flex items-center justify-between w-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.2)] z-10 max-w-screen">
+    <header className="px-4 h-16 flex items-center justify-between w-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
       <div className="flex items-center gap-4">
-        {/* Back to dashboard button */}
-        {isProjectPage && (
+        {isProjectPage && user && (
           <button
-            onClick={() => navigate({ to: "/" })}
+            onClick={() => navigate({ to: "/dashboard" })}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             title="Back to Dashboard"
           >
@@ -33,7 +50,13 @@ export function Header() {
         </div>
       </div>
       <div className="flex gap-2">
-        <SignOutButton />
+        {user ? (
+          <SignOutButton />
+        ) : (
+          <Link to="/signin" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+            Sign In
+          </Link>
+        )}
       </div>
     </header>
   );

@@ -12,6 +12,10 @@ export function ProjectCard({ project }: Props) {
     navigate({ to: "/project/$projectId", params: { projectId: project.id } });
   };
 
+  const viewTodos = () => {
+    navigate({ to: "/project/$projectId/todos", params: { projectId: project.id } });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -75,8 +79,11 @@ export function ProjectCard({ project }: Props) {
           >
             Open in Scheduler
           </button>
-          <button className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-2 px-4 rounded-md transition-colors">
-            Edit
+          <button
+            onClick={viewTodos}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-2 px-4 rounded-md transition-colors"
+          >
+            View Todos
           </button>
           <button className="w-full bg-red-200 hover:bg-red-300 text-red-800 text-sm font-medium py-2 px-4 rounded-md transition-colors">
             Delete
